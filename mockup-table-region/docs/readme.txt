@@ -25,11 +25,12 @@ You can use the following symbols in your source data:
 
 Sample Data
 -----------
+Try using this as the region source to demonstrate the various options listed above.
 
 select,product code,product name,price,supplier,sold out,shipping,edit
-(),1,Iphone 8,1000,Apple,[x],[Express],<99>
-(*),2,WinPho,500,Microsoft,[],[Standard],<99>
-(),3,Android XE,250,Google,[x],[-Not specified-],<99>
+(),1,{Iphone 8},1000,Apple,[x],[Express],<99>
+(*),2,{WinPho},500,Microsoft,[],[Standard],<99>
+(),3,{Android XAA},250,Google,[x],[-Not specified-],<99>
 
 Requirements
 ------------
