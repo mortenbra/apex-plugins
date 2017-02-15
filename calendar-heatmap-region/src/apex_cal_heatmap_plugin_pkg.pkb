@@ -10,57 +10,9 @@ as
   Who     Date        Description
   ------  ----------  --------------------------------
   MBR     02.11.2016  Created
+  Xembalo 15.02.2017  
  
   */
-
-
-function explode_period (p_from_date in date,
-                         p_to_date in date) return t_period_date_tab pipelined
-as
-  l_date                         date;
-  l_returnvalue                  t_period_date;
-begin
- 
-  /*
- 
-  Purpose:      returns collection of dates in specified range
- 
-  Remarks:      
- 
-  Who     Date        Description
-  ------  ----------  --------------------------------
-  MBR     02.11.2016  Created
- 
-  */
-
-  if p_to_date >= p_from_date then
-
-    l_date := p_from_date;
-
-    loop
-
-      l_returnvalue.year := extract(year from l_date);
-      l_returnvalue.month := extract(month from l_date);
-      l_returnvalue.days_in_month := to_number(to_char(last_day(l_date), 'DD'));
-      l_returnvalue.day := extract(day from l_date);
-      l_returnvalue.the_date := l_date;
-
-      pipe row (l_returnvalue);
-
-      if l_date >= p_to_date then
-        exit;
-      end if; 
-
-      l_date := l_date + 1;
-
-    end loop;
-
-  end if;
-
-  return;
-    
-end explode_period; 
-
 
 function get_optional_value (p_column in number,
                              p_row in number,
@@ -139,6 +91,7 @@ function render_plugin (p_region in apex_plugin.t_region,
 as
   l_start_date                   date;
   l_end_date                     date;
+  l_current_date                 date;
   l_month_count                  number;  
   l_day_count                    number := 0;
   l_week_count                   number := 0;
@@ -194,6 +147,7 @@ begin
   Who     Date        Description
   ------  ----------  --------------------------------
   MBR     02.11.2016  Created
+  Xembalo 15.02.2017  Simplified Loop, Get Day Names, Bugfix Min/Max Values
  
   */
 
@@ -217,9 +171,12 @@ begin
             p_max_rows         => 365);
 
   -- find the min and max values
+  l_min_value := 0;
+  l_max_value := 0;
+  
   for i in 1 .. l_column_value_list(1).value_list.count loop
-    l_min_value := coalesce(least(l_column_value_list(2).value_list(i).number_value, l_min_value), 0);
-    l_max_value := coalesce(greatest(l_column_value_list(2).value_list(i).number_value, l_max_value), 0);
+    l_min_value := Nvl(least(l_column_value_list(2).value_list(i).number_value, l_min_value), 0);
+    l_max_value := Nvl(greatest(l_column_value_list(2).value_list(i).number_value, l_max_value), 0);
   end loop;
 
   -- calculate the thresholds
@@ -244,7 +201,8 @@ begin
   htp.p('<svg width="676" height="104" class="">
   <g transform="translate(16, 20)">');
 
-  for l_rec in (select * from table(explode_period (l_start_date, l_end_date))) loop
+  l_current_date := l_start_date;
+  while l_current_date <= l_end_date loop
 
     l_day_count := l_day_count + 1;
 
@@ -259,7 +217,7 @@ begin
       htp.p('<g transform="translate(' || to_char((l_week_count-1) * 13) || ', 0)">');
     end if;
 
-    l_value_index := get_value_index (l_rec.the_date);
+    l_value_index := get_value_index (l_current_date);
     if l_value_index is not null then
       l_value := nvl(l_column_value_list(2).value_list(l_value_index).number_value,0);
       l_tooltip := get_optional_value(3, l_value_index, l_column_value_list);
@@ -276,7 +234,7 @@ begin
       l_color := get_color (l_value, 1, 2, 3, 4);
     end if;
 
-    l_tooltip := l_value || ' - ' || trim(to_char(l_rec.the_date, 'Day')) || ' ' || to_char(l_rec.the_date, 'dd.mm.yyyy');
+    l_tooltip := l_value || ' - ' || trim(to_char(l_current_date, 'Day')) || ' ' || to_char(l_current_date, 'dd.mm.yyyy');
 
     if l_link is not null then
       htp.p('<a xlink:href="' || l_link || '">');
@@ -290,6 +248,7 @@ begin
     end if;
 
     l_day_in_week_count := l_day_in_week_count + 1;
+    l_current_date := l_current_date + 1;
 
   end loop;
 
@@ -303,16 +262,15 @@ begin
     htp.p('<text x="' || to_char(((i-1)*55)+13) || '" y="-10" class="month">' || to_char(add_months(l_start_date, i-1), 'Mon') || '</text>');
   end loop;
 
-  htp.p('
-    <text text-anchor="start" class="wday" dx="-14" dy="8">Mon</text>
-    <text text-anchor="start" class="wday" dx="-14" dy="20">Tue</text>
-    <text text-anchor="start" class="wday" dx="-14" dy="32">Wed</text>
-    <text text-anchor="start" class="wday" dx="-14" dy="44">Thu</text>
-    <text text-anchor="start" class="wday" dx="-14" dy="57">Fri</text>
-    <text text-anchor="start" class="wday" dx="-14" dy="69">Sat</text>
-    <text text-anchor="start" class="wday" dx="-14" dy="81">Sun</text>
-  </g>
-</svg>');
+  htp.p('    <text text-anchor="start" class="wday" dx="-14" dy="8">' || to_char(l_start_date, 'Dy') || '</text>');
+  htp.p('    <text text-anchor="start" class="wday" dx="-14" dy="20">' || to_char(l_start_date + 1, 'Dy') || '</text>');
+  htp.p('    <text text-anchor="start" class="wday" dx="-14" dy="32">' || to_char(l_start_date + 2, 'Dy') || '</text>');
+  htp.p('    <text text-anchor="start" class="wday" dx="-14" dy="44">' || to_char(l_start_date + 3, 'Dy') || '</text>');
+  htp.p('    <text text-anchor="start" class="wday" dx="-14" dy="57">' || to_char(l_start_date + 4, 'Dy') || '</text>');
+  htp.p('    <text text-anchor="start" class="wday" dx="-14" dy="69">' || to_char(l_start_date + 5, 'Dy') || '</text>');
+  htp.p('    <text text-anchor="start" class="wday" dx="-14" dy="81">' || to_char(l_start_date + 6, 'Dy') || '</text>');
+  htp.p('  </g>');
+  htp.p('</svg>');
 
 
   htp.p('</div>'); -- calendar-graph
