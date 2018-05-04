@@ -1,7 +1,8 @@
-Calendar Heatmap Plugin
-=======================
+## Calendar Heatmap Plugin
 
 This is a region plugin used to display a yearly calendar heatmap, inspired by the GitHub contribution chart.
+
+![Alt text](heatmap.png?raw=true "Heatmap Preview")
 
 Installation:
 - Install the plugin into APEX
