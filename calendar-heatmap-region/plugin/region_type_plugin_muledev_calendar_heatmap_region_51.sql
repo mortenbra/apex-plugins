@@ -57,7 +57,7 @@ wwv_flow_api.create_plugin_attribute(
 ,p_display_sequence=>20
 ,p_prompt=>'End Date'
 ,p_attribute_type=>'PLSQL FUNCTION BODY BOOLEAN'
-,p_is_required=>true
+,p_is_required=>false
 ,p_default_value=>'return to_char(sysdate, ''YYYYMMDD'');'
 ,p_is_translatable=>false
 ,p_help_text=>'Specify the end date, in the format of YYYYMMDD, that the plugin will use. From this end date, the plugin will calculate a start date of end_date - 365 days.'

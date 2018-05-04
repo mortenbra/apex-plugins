@@ -153,7 +153,11 @@ begin
  
   */
 
-  l_end_date := to_date(apex_plugin_util.get_plsql_function_result(p_region.attribute_02), 'YYYYMMDD');
+  if p_region.attribute_02 is not null then
+    l_end_date := to_date(apex_plugin_util.get_plsql_function_result(p_region.attribute_02), 'YYYYMMDD');
+  else
+    l_end_date := trunc(sysdate);
+  end if;
   l_start_date := l_end_date - 364; -- go back a year
   l_start_date_orig := l_start_date; -- used for month headings
   l_start_date := trunc(l_start_date, 'IW'); -- make sure we start on a Monday (first day of the ISO week), see http://stackoverflow.com/a/32864829
