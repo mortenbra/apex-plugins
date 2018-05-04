@@ -16,7 +16,7 @@ as
 
 function get_optional_value (p_column in number,
                              p_row in number,
-                             p_column_value_list in apex_plugin_util.t_column_value_list2) return varchar2
+                             p_column_value_list in out nocopy apex_plugin_util.t_column_value_list2) return varchar2
 as
   l_returnvalue                  varchar2(4000);
 begin
@@ -90,6 +90,7 @@ function render_plugin (p_region in apex_plugin.t_region,
                         p_is_printer_friendly in boolean) return apex_plugin.t_region_render_result
 as
   l_start_date                   date;
+  l_start_date_orig              date;
   l_end_date                     date;
   l_current_date                 date;
   l_month_count                  number;  
@@ -148,11 +149,13 @@ begin
   ------  ----------  --------------------------------
   MBR     02.11.2016  Created
   Xembalo 15.02.2017  Simplified Loop, Get Day Names, Bugfix Min/Max Values
+  rimblas 02.05.2018  End Date is now a region attribute
  
   */
 
-  l_end_date := trunc(sysdate); -- TODO: get from plugin settings?
-  l_start_date := l_end_date - 365; -- go back a year
+  l_end_date := to_date(apex_plugin_util.get_plsql_function_result(p_region.attribute_02), 'YYYYMMDD');
+  l_start_date := l_end_date - 364; -- go back a year
+  l_start_date_orig := l_start_date; -- used for month headings
   l_start_date := trunc(l_start_date, 'IW'); -- make sure we start on a Monday (first day of the ISO week), see http://stackoverflow.com/a/32864829
 
    -- The first LOV column has to be a date, the second a number, the other columns strings
@@ -188,9 +191,10 @@ begin
   l_threshold4 := l_threshold_value*4;
 
   apex_css.add(p_css => '
-  .calendar-graph { height: 126px; padding: 5px 0 0; overflow-x: auto; overflow-y: hidden; }
+  .calendar-graph { height: 120px; padding: 5px 0 0; overflow-x: auto; overflow-y: hidden; }
   .calendar-graph text.month { font-size: 10px; fill: #767676; }
   .calendar-graph text.wday { font-size: 9px; fill: #767676; }
+  .calendar-graph g > a {cursor: pointer; }
 
   .contrib-legend { float: left; }
   .contrib-legend .legend { position: relative; bottom: -1px; display: inline-block; margin: 0 5px; list-style: none; }
@@ -228,13 +232,16 @@ begin
       l_link := null;
     end if;
 
+    if l_tooltip is null then
+      l_tooltip := l_value || ' - ' || trim(to_char(l_current_date, 'Day')) || ' ' || to_char(l_current_date, 'dd.mm.yyyy');
+    end if;
+
     if l_threshold_value > 0 then
       l_color := get_color (l_value, 1, l_threshold1, l_threshold2, l_threshold3);
     else
       l_color := get_color (l_value, 1, 2, 3, 4);
     end if;
 
-    l_tooltip := l_value || ' - ' || trim(to_char(l_current_date, 'Day')) || ' ' || to_char(l_current_date, 'dd.mm.yyyy');
 
     if l_link is not null then
       htp.p('<a xlink:href="' || l_link || '">');
@@ -256,10 +263,10 @@ begin
 
   -- get a list of the months between l_start_date and l_end_date and print them with an offset of 60 pixels between each
 
-  l_month_count := round(months_between (l_end_date, l_start_date));
+  l_month_count := round(months_between (l_end_date, l_start_date_orig));
 
   for i in 1..l_month_count loop
-    htp.p('<text x="' || to_char(((i-1)*55)+13) || '" y="-10" class="month">' || to_char(add_months(l_start_date, i-1), 'Mon') || '</text>');
+    htp.p('<text x="' || to_char(((i-1)*55)+13) || '" y="-10" class="month">' || to_char(add_months(l_start_date_orig, i-1), 'Mon') || '</text>');
   end loop;
 
   htp.p('    <text text-anchor="start" class="wday" dx="-14" dy="8">' || to_char(l_start_date, 'Dy') || '</text>');
@@ -288,7 +295,7 @@ begin
                 <li style="background-color: #1e6823" title="' || to_char(l_threshold3) || '"></li>
             </ul>
           </div>
-          <div style="clear:both;">');
+          <div style="clear:both;"></div>');
 
   end if;
 
